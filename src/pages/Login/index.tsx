@@ -1,23 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { Spin } from 'antd'
-import { connect, Dispatch, history, Loading } from 'umi';
+import { AUTO_CREATE_CONFIG_DEF, CLIENT, NOTIFICATION_CONFIG_DEF, SESSION_STORAGE_KEY, UPLOAD_CALL_CONFIG_DEF } from "@/constant";
+import { Spin } from 'antd';
 import { stringify } from 'qs';
-import { CLIENT, SESSION_STORAGE_KEY } from "@/constant";
+import React, { useEffect, useRef } from 'react';
+import { Dispatch, Loading, connect, history } from 'umi';
 import styles from './index.less';
-import { Alert } from '@/components';
 
 interface LoginProps {
     getToken: (obj: LooseObject) => Promise<LooseObject>
     getUser: (obj: LooseObject) => Promise<LooseObject>
     saveUserConfig: (obj: LooseObject) => void
-    save: (obj: LooseObject) => void
     logout: () => void
     loginLoading: boolean | undefined
 }
 
-const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, save, logout, loginLoading = false }) => {
+const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, logout, loginLoading = false }) => {
 
-    const [showAlert, setShowAlert] = useState<boolean>(false);
+    const userConfig = useRef<LooseObject>({});
 
     const loginSuccess = () => {
         history.replace({ pathname: '/home', });
@@ -30,25 +28,12 @@ const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, sa
                     ...userConfig,
                     autoLogin: true,
                     uploadCall: userConfig.uploadCall ?? true,
-                    showConfig: userConfig.showConfig ?? {
-                        first: 'Name',
-                        second: 'Phone',
-                        third: 'None',
-                        forth: 'None',
-                        fifth: 'None',
-                    }
+                    notification: userConfig.notification ?? true,
+                    autoCreate: userConfig.autoCreate ?? false,
+                    autoCreateConfig: userConfig.autoCreateConfig ?? AUTO_CREATE_CONFIG_DEF,
+                    uploadCallConfig: userConfig.uploadCallConfig ?? UPLOAD_CALL_CONFIG_DEF,
+                    notificationConfig: userConfig.notificationConfig ?? NOTIFICATION_CONFIG_DEF,
                 }
-                save({
-                    tokenInfo: userConfig.tokenInfo,
-                    uploadCall: userConfig.uploadCall ?? true,
-                    showConfig: userConfig.showConfig ?? {
-                        first: 'Name',
-                        second: 'Phone',
-                        third: 'None',
-                        forth: 'None',
-                        fifth: 'None',
-                    }
-                })
                 saveUserConfig(config);
                 loginSuccess();
                 return
@@ -87,6 +72,7 @@ const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, sa
         getToken(params).then(res => {
             if (res?.access_token) {
                 getUserInfo({
+                    ...userConfig.current,
                     tokenInfo: res
                 });
                 return;
@@ -118,11 +104,12 @@ const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, sa
         pluginSDK.userConfig.getUserConfig(function ({ errorCode, data }) {
             console.log(errorCode, data);
             if (errorCode === 0 && data) {
-                const userConfig = JSON.parse(data);
-                console.log(userConfig);
-                if (userConfig.autoLogin && userConfig.tokenInfo?.access_token) {
-                    sessionStorage.setItem(SESSION_STORAGE_KEY.token, userConfig.tokenInfo?.access_token);
-                    getUserInfo(userConfig);
+                const config = JSON.parse(data);
+                console.log(config);
+                userConfig.current = config;
+                if (config.autoLogin && config.tokenInfo?.access_token) {
+                    sessionStorage.setItem(SESSION_STORAGE_KEY.token, config.tokenInfo?.access_token);
+                    getUserInfo(config);
                     return;
                 }
             }
@@ -131,33 +118,13 @@ const IndexPage: React.FC<LoginProps> = ({ getUser, getToken, saveUserConfig, sa
     }
 
     useEffect(() => {
-        try {
-            // @ts-ignore
-            pluginSDK.getCommonInfo(({ errorCode, data }) => {
-                // data.desktopVersion： 1.x.x
-                console.log(errorCode, data);
-                const { isWaveSupportPlugin } = data
-                if (errorCode === 0 && isWaveSupportPlugin) {
-                    getUserConfig();
-                    return
-                }
-                else {
-                    setShowAlert(true);
-                }
-            })
-        }
-        catch (error) {
-            console.error(error)
-            setShowAlert(true);
-        }
+        getUserConfig();
     }, [])
 
     return (
         <>
             <Spin spinning={loginLoading}>
-                <div className={styles.homePage}>
-                    <Alert show={showAlert} />
-                </div>
+                <div className={styles.homePage} />
             </Spin>
         </>
     );
@@ -179,10 +146,6 @@ export default connect(
         saveUserConfig: (payload: LooseObject) => dispatch({
             type: 'global/saveUserConfig',
             payload,
-        }),
-        save: (payload: LooseObject) => dispatch({
-            type: 'global/save',
-            payload
         }),
         logout: () => dispatch({
             type: 'global/logout'

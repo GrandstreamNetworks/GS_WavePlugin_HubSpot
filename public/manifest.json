@@ -1,0 +1,14 @@
+{
+  "name": "HubSpot",
+  "version": "1.0.3.1",
+  "description": "HubSpot CRM provides all the tools needed for marketing, sales, content management, and customer service. HubSpot CRM’s integration with the Wave app further improves customer cultivation and user transaction management, allowing for maximum returns on time investments.",
+  "icon": "./logo.png",
+  "extend_icon": "./extend_icon.png",
+  "permissions": [
+    "call.listen",
+    "custom.listen",
+    "contact.manage"
+  ],
+  "plugin_type": "background",
+  "minimum_SDK_version": "1.0.4"
+}

@@ -1,7 +1,7 @@
-import { Effect, Reducer, history } from 'umi';
-import { get } from 'lodash';
-import { getToken, getUser, getAccount, deleteToken } from '@/services/global';
 import { CLIENT, REQUEST_CODE, SESSION_STORAGE_KEY } from '@/constant';
+import { deleteToken, getAccount, getToken, getUser } from '@/services/global';
+import { get } from 'lodash';
+import { Effect, Reducer, history } from 'umi';
 
 export interface GlobalModelState {
     userConfig: LooseObject
@@ -23,8 +23,7 @@ export interface GlobalModelType {
         getAccount: Effect
         saveUserConfig: Effect
         logout: Effect
-        uploadCallChange: Effect
-        saveShowConfig: Effect
+        userConfigChange: Effect
     };
     reducers: {
         save: Reducer<GlobalModelState>;
@@ -45,7 +44,7 @@ const GlobalModal: GlobalModelType = {
     },
 
     effects: {
-        *getToken({ payload }, { call }) {
+        *getToken({ payload }, { call }): any {
             const res = yield call(getToken, payload);
             if (res?.access_token) {
                 sessionStorage.setItem(SESSION_STORAGE_KEY.token, res.access_token);
@@ -53,7 +52,7 @@ const GlobalModal: GlobalModelType = {
             return res;
         },
 
-        * getAccount(_, { call, put }) {
+        * getAccount(_, { call, put }): any {
             const res = yield call(getAccount)
             const connectState = res?.code || 'SUCCESS';
             yield put({
@@ -66,7 +65,7 @@ const GlobalModal: GlobalModelType = {
             return res;
         },
 
-        *getUser({ payload }, { call, put }) {
+        *getUser({ payload }, { call, put }): any {
             let res = yield call(getUser);
             if (res.code === REQUEST_CODE.noAuthority || res.status === REQUEST_CODE.noAuthority) {
                 const getToken = yield put({
@@ -110,34 +109,15 @@ const GlobalModal: GlobalModelType = {
             history.replace({ pathname: "login" });
         },
 
-        * uploadCallChange({ payload }, { put, select }) {
+        * userConfigChange({ payload }, { put, select }) {
             const { userConfig } = yield select((state: any) => state.global);
-            userConfig.uploadCall = payload;
+            const newConfig = {
+                ...userConfig,
+                ...payload,
+            }
             yield put({
                 type: 'saveUserConfig',
-                payload: userConfig,
-            })
-            yield put({
-                type: 'save',
-                payload: {
-                    uploadCall: payload,
-                }
-            })
-        },
-
-        * saveShowConfig({ payload }, { put, select }) {
-            const { userConfig } = yield select((state: any) => state.global);
-            console.log(userConfig);
-            userConfig.showConfig = payload;
-            yield put({
-                type: 'saveUserConfig',
-                payload: userConfig,
-            })
-            yield put({
-                type: 'save',
-                payload: {
-                    showConfig: payload,
-                }
+                payload: newConfig,
             })
         },
 
